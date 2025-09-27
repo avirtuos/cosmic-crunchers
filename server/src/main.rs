@@ -262,10 +262,10 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
     // Task to send messages to client
     let send_task = tokio::spawn(async move {
         while let Ok(msg) = rx.recv().await {
-            if let Ok(json) = serde_json::to_string(&msg) {
-                if sender.send(Message::Text(json.into())).await.is_err() {
-                    break;
-                }
+            if let Ok(json) = serde_json::to_string(&msg)
+                && sender.send(Message::Text(json.into())).await.is_err()
+            {
+                break;
             }
         }
     });
@@ -417,10 +417,10 @@ async fn leave_room(state: &AppState, room_code: &str, player_id: Uuid) {
 async fn update_player_activity(state: &AppState, room_code: &str, player_id: Uuid) {
     let mut rooms = state.rooms.lock().unwrap();
 
-    if let Some(room) = rooms.get_mut(room_code) {
-        if let Some(player) = room.players.get_mut(&player_id) {
-            player.last_seen = Instant::now();
-        }
+    if let Some(room) = rooms.get_mut(room_code)
+        && let Some(player) = room.players.get_mut(&player_id)
+    {
+        player.last_seen = Instant::now();
     }
 }
 
