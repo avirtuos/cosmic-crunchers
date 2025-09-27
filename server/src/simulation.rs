@@ -384,7 +384,8 @@ impl GameSimulation {
                 .query_mut::<(&mut Transform, &Ship, &InputBuffer)>()
         {
             if let Some(body_handle) = self.entity_to_body.get(&entity)
-                && let Some(body) = self.physics.rigid_body_set.get_mut(*body_handle) {
+                && let Some(body) = self.physics.rigid_body_set.get_mut(*body_handle)
+            {
                 // Get the most recent input if available
                 if let Some(latest_input) = input_buffer.buffer.back() {
                     // Apply thrust force
@@ -430,7 +431,8 @@ impl GameSimulation {
     fn sync_physics_to_ecs(&mut self) {
         for (entity, transform) in self.world.query_mut::<&mut Transform>() {
             if let Some(body_handle) = self.entity_to_body.get(&entity)
-                && let Some(body) = self.physics.rigid_body_set.get(*body_handle) {
+                && let Some(body) = self.physics.rigid_body_set.get(*body_handle)
+            {
                 let position = body.translation();
                 let rotation = body.rotation().angle();
 
@@ -463,7 +465,8 @@ impl GameSimulation {
         for (_, health) in self.world.query_mut::<&mut Health>() {
             // Shield regeneration
             if current_time - health.last_damage_time >= health.shield_recharge_delay as f64
-                && health.shield < health.shield_max {
+                && health.shield < health.shield_max
+            {
                 health.shield += health.shield_recharge_rate * dt;
                 health.shield = health.shield.min(health.shield_max);
             }
@@ -501,7 +504,8 @@ impl GameSimulation {
                 transform.position = position;
                 // Also update physics body if it exists
                 if let Some(body_handle) = self.entity_to_body.get(&entity)
-                    && let Some(body) = self.physics.rigid_body_set.get_mut(*body_handle) {
+                    && let Some(body) = self.physics.rigid_body_set.get_mut(*body_handle)
+                {
                     let pos_vector = Vector::new(position[0], position[1]);
                     body.set_translation(pos_vector, true);
                     // Reduce velocity when hitting boundaries
