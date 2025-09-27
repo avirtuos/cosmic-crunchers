@@ -1,0 +1,15 @@
+[package]
+name = "cosmic-crunchers-server"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+axum = "0.8.4"
+bincode = "2.0.1"
+hecs = "0.10.5"
+rapier2d = "0.29.0"
+redb = "2.6.3"
+rkyv = "0.8.11"
+serde = "1.0.227"
+tokio = "1.47.1"
+tracing = "0.1.41"

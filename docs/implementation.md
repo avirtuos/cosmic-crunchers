@@ -20,19 +20,19 @@ Phases overview
 - Phase 8 — Release prep & post-launch ops
 
 Phase 0 — Project scaffolding & CI
-- [ ] Create repository layout
+- [x] Create repository layout
   - /server — Rust crate
   - /client — TypeScript + Phaser 3 app
   - /docs — design & operational docs
   - /tools — scripts for testing, bots, record/replay
-- [ ] Add README with quick start for local dev
-- [ ] Create initial Rust server crate (cargo workspace if desired)
-- [ ] Create initial client scaffold (Vite + TypeScript or similar)
-- [ ] Add GitHub Actions CI:
+- [x] Add README with quick start for local dev
+- [x] Create initial Rust server crate (cargo workspace if desired)
+- [x] Create initial client scaffold (Vite + TypeScript or similar)
+- [x] Add GitHub Actions CI:
   - Rust unit tests
   - Node linter/build for the client
   - Basic integration job later for server+client smoke test
-- [ ] Developer environment bootstrap (dev_setup.sh)
+- [x] Developer environment bootstrap (dev_setup.sh)
   - Add `dev_setup.sh` to validate and optionally install required tooling:
     - git, curl, wget, jq, make, cmake
     - rustup/cargo (Rust stable), rustfmt, clippy
@@ -58,6 +58,7 @@ Phase 1 — Lobby, WebSocket connections, minimal netcode
   - Spawn async task per room which can accept inputs and send binary snapshots
 - [ ] Lightweight snapshot & input wire format
   - Define versioned rkyv schemas for input and snapshot (initial draft)
+- [ ] Create a start script that launches the game server and prints the URL to visit to play the game.
 - Acceptance:
   - Clients can open WebSocket and join a room.
   - Server receives timestamped inputs and can send binary snapshots that client can deserialize.
