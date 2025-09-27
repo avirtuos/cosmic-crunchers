@@ -7,6 +7,7 @@ Guiding principles
 - Server authoritative: simulation and game rules run on the server. Client renders + predicts.
 - Keep systems testable and deterministic where possible (record/replay).
 - Prioritize networking/lobby/simulation basics first — they form the backbone for all gameplay.
+- No AI tools should run the server directly, always ask the developer to manual run the server and carry out any inspections you may require.
 
 Phases overview
 - Phase 0 — Project scaffolding & CI
@@ -43,22 +44,22 @@ Phase 0 — Project scaffolding & CI
 - Acceptance: `cargo build` in /server and `npm run dev` in /client succeed locally.
 
 Phase 1 — Lobby, WebSocket connections, minimal netcode
-- [ ] Implement axum HTTP + WebSocket endpoint(s)
+- [x] Implement axum HTTP + WebSocket endpoint(s)
   - Connection handshake: protocol version negotiation, player metadata submission
   - Binary frames only
-- [ ] Implement lobby manager
+- [x] Implement lobby manager
   - Create/join by 8-char room code
   - Room lifecycle (create, expire, shutdown on empty)
   - Max players enforcement (10)
   - Room listing and optional public match
-- [ ] Connection lifecycle & heartbeats
+- [x] Connection lifecycle & heartbeats
   - Ping/pong or heartbeat messages
   - Rejoin flow with grace window (120s)
-- [ ] Simple per-lobby task loop
+- [x] Simple per-lobby task loop
   - Spawn async task per room which can accept inputs and send binary snapshots
-- [ ] Lightweight snapshot & input wire format
+- [x] Lightweight snapshot & input wire format
   - Define versioned rkyv schemas for input and snapshot (initial draft)
-- [ ] Create a start script that launches the game server and prints the URL to visit to play the game.
+- [x] Create a start script that launches the game server and prints the URL to visit to play the game.
 - Acceptance:
   - Clients can open WebSocket and join a room.
   - Server receives timestamped inputs and can send binary snapshots that client can deserialize.
