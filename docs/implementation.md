@@ -36,7 +36,7 @@ Phase 0 — Project scaffolding & CI
   - Add `dev_setup.sh` to validate and optionally install required tooling:
     - git, curl, wget, jq, make, cmake
     - rustup/cargo (Rust stable), rustfmt, clippy
-    - node (prefer via nvm) and npm (Node >= 18)
+    - node (prefer via nvm) and npm (Node >= 22)
   - Support common platforms (Linux package managers: apt/dnf/pacman) and macOS (brew). Prompt before installing or modifying shell profiles.
   - Script prints a summary, provides PATH/shell hints, and exits non-zero if critical dependencies remain missing.
   - Acceptance: Running `./dev_setup.sh` completes with required tools verified or installed (or exits non-zero with instructions). Add usage notes to README.

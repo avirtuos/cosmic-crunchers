@@ -16,7 +16,7 @@ chmod +x ./dev_setup.sh
 This script will check for and optionally install:
 - Basic tools: git, curl, wget, jq, make, cmake
 - Rust toolchain: rustup, cargo, rustfmt, clippy
-- Node.js (>= 18) and npm (preferably via nvm)
+- Node.js (>= 22) and npm (preferably via nvm)
 
 If Node was installed via nvm, restart your terminal or source your shell profile after the script completes.
 

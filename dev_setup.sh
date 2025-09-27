@@ -12,7 +12,7 @@ set -euo pipefail
 #   chmod +x ./dev_setup.sh
 #   ./dev_setup.sh
 
-REQUIRED_NODE_MAJOR=18
+REQUIRED_NODE_MAJOR=22
 
 color() { printf "\033[%sm%s\033[0m" "$1" "$2"; }
 info()  { echo "$(color 34 "[INFO]") $*"; }
