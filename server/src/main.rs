@@ -106,6 +106,12 @@ pub struct Room {
     pub last_activity: Instant,
 }
 
+impl Default for Room {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Room {
     pub fn new() -> Self {
         let now = Instant::now();
