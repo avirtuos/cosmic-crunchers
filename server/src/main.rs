@@ -20,6 +20,15 @@ use tower_http::cors::{Any, CorsLayer};
 use tracing::{error, info, warn};
 use uuid::Uuid;
 
+mod components;
+mod simulation;
+mod wire_format;
+
+// Note: Will integrate binary format and simulation in next steps
+// use components::InputData;
+// use simulation::{GameSimulation, SimulationStepResult};
+// use wire_format::{BinaryMessage, MessageType};
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RoomCode(String);
 

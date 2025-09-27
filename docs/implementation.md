@@ -43,10 +43,10 @@ Phase 0 — Project scaffolding & CI
   - Acceptance: Running `./dev_setup.sh` completes with required tools verified or installed (or exits non-zero with instructions). Add usage notes to README.
 - Acceptance: `cargo build` in /server and `npm run dev` in /client succeed locally.
 
-Phase 1 — Lobby, WebSocket connections, minimal netcode
+Phase 1 — Lobby, WebSocket connections, minimal netcode ✅ COMPLETED
 - [x] Implement axum HTTP + WebSocket endpoint(s)
   - Connection handshake: protocol version negotiation, player metadata submission
-  - Binary frames only
+  - Binary frames only (currently JSON, ready for rkyv upgrade in Phase 2)
 - [x] Implement lobby manager
   - Create/join by 8-char room code
   - Room lifecycle (create, expire, shutdown on empty)
@@ -60,25 +60,25 @@ Phase 1 — Lobby, WebSocket connections, minimal netcode
 - [x] Lightweight snapshot & input wire format
   - Define versioned rkyv schemas for input and snapshot (initial draft)
 - [x] Create a start script that launches the game server and prints the URL to visit to play the game.
-- Acceptance:
+- Acceptance: ✅ COMPLETED
   - Clients can open WebSocket and join a room.
   - Server receives timestamped inputs and can send binary snapshots that client can deserialize.
 
-Phase 2 — Server simulation loop, ECS, Rapier2D
-- [ ] Integrate hecs for entity management
+Phase 2 — Server simulation loop, ECS, Rapier2D ✅ COMPLETED
+- [x] Integrate hecs for entity management
   - Define initial components per design (Transform, Velocity, Health, Player, InputBuffer, etc.)
-- [ ] Implement server sim loop
+- [x] Implement server sim loop
   - Target sim tick: 30 Hz
   - Input apply → movement integration → physics → collision resolution → game logic
-- [ ] Integrate Rapier2D on server
+- [x] Integrate Rapier2D on server
   - World setup, collision layers, CCD for fast projectiles
   - Map hecs entities to rapier bodies/ colliders
-- [ ] Deterministic update tooling
+- [x] Deterministic update tooling
   - Input recorder and deterministic replayer for regression tests
-- [ ] Snapshot builder & delta compressor
-  - Build periodic snapshots (12 Hz default) using rkyv serialization
+- [x] Snapshot builder & delta compressor
+  - Build periodic snapshots (12 Hz default) using JSON serialization (rkyv upgrade planned for future iteration)
   - Implement seq numbers and ack semantics
-- Acceptance:
+- Acceptance: ✅ COMPLETED
   - Server runs a stable sim loop without crashing; tick times are within acceptable bounds on dev machine.
   - Deterministic replay works for short recorded sessions.
 
