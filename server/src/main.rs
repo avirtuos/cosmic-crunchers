@@ -1,12 +1,12 @@
 use axum::{
+    Router,
     extract::{
-        ws::{Message, WebSocket, WebSocketUpgrade},
         State,
+        ws::{Message, WebSocket, WebSocketUpgrade},
     },
     http::StatusCode,
     response::IntoResponse,
     routing::{get, post},
-    Router,
 };
 use futures_util::{SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
@@ -45,22 +45,49 @@ impl RoomCode {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum ClientMessage {
-    Join { room_code: String, player_name: String },
-    Input { sequence: u32, timestamp: u64, data: Vec<u8> },
-    Ping { timestamp: u64 },
+    Join {
+        room_code: String,
+        player_name: String,
+    },
+    Input {
+        sequence: u32,
+        timestamp: u64,
+        data: Vec<u8>,
+    },
+    Ping {
+        timestamp: u64,
+    },
     Leave,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum ServerMessage {
-    RoomJoined { room_code: String, player_id: String },
-    RoomCreated { room_code: String },
-    PlayerJoined { player_id: String, player_name: String },
-    PlayerLeft { player_id: String },
-    Snapshot { sequence: u32, timestamp: u64, data: Vec<u8> },
-    Pong { timestamp: u64 },
-    Error { message: String },
+    RoomJoined {
+        room_code: String,
+        player_id: String,
+    },
+    RoomCreated {
+        room_code: String,
+    },
+    PlayerJoined {
+        player_id: String,
+        player_name: String,
+    },
+    PlayerLeft {
+        player_id: String,
+    },
+    Snapshot {
+        sequence: u32,
+        timestamp: u64,
+        data: Vec<u8>,
+    },
+    Pong {
+        timestamp: u64,
+    },
+    Error {
+        message: String,
+    },
 }
 
 #[derive(Debug)]
@@ -94,17 +121,17 @@ impl Room {
         if self.players.len() >= 10 {
             return Err("Room is full".to_string());
         }
-        
+
         // Notify existing players
         let join_msg = ServerMessage::PlayerJoined {
             player_id: player.id.to_string(),
             player_name: player.name.clone(),
         };
-        
+
         for existing_player in self.players.values() {
             let _ = existing_player.sender.send(join_msg.clone());
         }
-        
+
         self.players.insert(player.id, player);
         self.last_activity = Instant::now();
         Ok(())
@@ -115,11 +142,11 @@ impl Room {
             let leave_msg = ServerMessage::PlayerLeft {
                 player_id: player_id.to_string(),
             };
-            
+
             for existing_player in self.players.values() {
                 let _ = existing_player.sender.send(leave_msg.clone());
             }
-            
+
             self.last_activity = Instant::now();
         }
     }
@@ -130,7 +157,8 @@ impl Room {
 
     pub fn cleanup_inactive_players(&mut self) {
         let cutoff = Instant::now() - Duration::from_secs(120); // 2 minutes timeout
-        let inactive_players: Vec<Uuid> = self.players
+        let inactive_players: Vec<Uuid> = self
+            .players
             .iter()
             .filter(|(_, player)| player.last_seen < cutoff)
             .map(|(id, _)| *id)
@@ -155,12 +183,13 @@ async fn main() {
     tracing_subscriber::fmt::init();
 
     // Get configuration from environment variables
-    let server_host = std::env::var("COSMIC_SERVER_HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
+    let server_host =
+        std::env::var("COSMIC_SERVER_HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
     let server_port = std::env::var("COSMIC_SERVER_PORT")
         .unwrap_or_else(|_| "8080".to_string())
         .parse::<u16>()
         .expect("COSMIC_SERVER_PORT must be a valid port number");
-    
+
     // Build client URL for CORS (assume same host as client, default port 5173)
     let client_host = std::env::var("CLIENT_HOST").unwrap_or_else(|_| "localhost".to_string());
     let client_port = std::env::var("CLIENT_PORT").unwrap_or_else(|_| "5173".to_string());
@@ -189,7 +218,7 @@ async fn main() {
             CorsLayer::new()
                 .allow_origin(client_url.parse::<axum::http::HeaderValue>().unwrap())
                 .allow_methods(Any)
-                .allow_headers(Any)
+                .allow_headers(Any),
         )
         .with_state(state);
 
@@ -197,11 +226,14 @@ async fn main() {
     let listener = tokio::net::TcpListener::bind(&bind_address)
         .await
         .expect("Failed to bind to address");
-    
-    info!("Cosmic Crunchers server listening on http://{}", bind_address);
+
+    info!(
+        "Cosmic Crunchers server listening on http://{}",
+        bind_address
+    );
     info!("WebSocket endpoint: ws://{}/ws", bind_address);
     info!("CORS configured for: {}", client_url);
-    
+
     axum::serve(listener, app)
         .await
         .expect("Failed to start server");
@@ -218,7 +250,7 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
     let (mut sender, mut receiver) = socket.split();
     let player_id = Uuid::new_v4();
     let (tx, mut rx) = broadcast::channel(100);
-    
+
     info!("New WebSocket connection: {}", player_id);
 
     // Task to send messages to client
@@ -237,22 +269,30 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
         let state = state.clone();
         tokio::spawn(async move {
             let mut current_room: Option<String> = None;
-            
+
             while let Some(msg) = receiver.next().await {
                 match msg {
                     Ok(Message::Text(text)) => {
                         if let Ok(client_msg) = serde_json::from_str::<ClientMessage>(&text) {
                             match client_msg {
-                                ClientMessage::Join { room_code, player_name } => {
+                                ClientMessage::Join {
+                                    room_code,
+                                    player_name,
+                                } => {
                                     current_room = handle_join(
                                         &state,
                                         &room_code,
                                         &player_name,
                                         player_id,
                                         tx.clone(),
-                                    ).await;
+                                    )
+                                    .await;
                                 }
-                                ClientMessage::Input { sequence, timestamp, data } => {
+                                ClientMessage::Input {
+                                    sequence,
+                                    timestamp,
+                                    data,
+                                } => {
                                     // For Phase 1, just echo back as snapshot for testing
                                     let snapshot = ServerMessage::Snapshot {
                                         sequence,
@@ -264,7 +304,7 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
                                 ClientMessage::Ping { timestamp } => {
                                     let pong = ServerMessage::Pong { timestamp };
                                     let _ = tx.send(pong);
-                                    
+
                                     // Update last seen time
                                     if let Some(room_code) = &current_room {
                                         update_player_activity(&state, room_code, player_id).await;
@@ -312,7 +352,7 @@ async fn handle_join(
     sender: broadcast::Sender<ServerMessage>,
 ) -> Option<String> {
     let mut rooms = state.rooms.lock().unwrap();
-    
+
     if let Some(room) = rooms.get_mut(room_code) {
         let player = Player {
             id: player_id,
@@ -320,14 +360,21 @@ async fn handle_join(
             last_seen: Instant::now(),
             sender: sender.clone(),
         };
-        
+
         match room.add_player(player) {
             Ok(()) => {
                 let join_msg = ServerMessage::RoomJoined {
                     room_code: room_code.to_string(),
                     player_id: player_id.to_string(),
                 };
-                let _ = rooms.get(room_code).unwrap().players.get(&player_id).unwrap().sender.send(join_msg);
+                let _ = rooms
+                    .get(room_code)
+                    .unwrap()
+                    .players
+                    .get(&player_id)
+                    .unwrap()
+                    .sender
+                    .send(join_msg);
                 info!("Player {} joined room {}", player_name, room_code);
                 Some(room_code.to_string())
             }
@@ -348,11 +395,11 @@ async fn handle_join(
 
 async fn leave_room(state: &AppState, room_code: &str, player_id: Uuid) {
     let mut rooms = state.rooms.lock().unwrap();
-    
+
     if let Some(room) = rooms.get_mut(room_code) {
         room.remove_player(player_id);
         info!("Player {} left room {}", player_id, room_code);
-        
+
         // Remove empty rooms
         if room.is_empty() {
             rooms.remove(room_code);
@@ -363,7 +410,7 @@ async fn leave_room(state: &AppState, room_code: &str, player_id: Uuid) {
 
 async fn update_player_activity(state: &AppState, room_code: &str, player_id: Uuid) {
     let mut rooms = state.rooms.lock().unwrap();
-    
+
     if let Some(room) = rooms.get_mut(room_code) {
         if let Some(player) = room.players.get_mut(&player_id) {
             player.last_seen = Instant::now();
@@ -375,10 +422,10 @@ async fn create_room(State(state): State<AppState>) -> impl IntoResponse {
     let mut rooms = state.rooms.lock().unwrap();
     let room = Room::new();
     let room_code = room.code.as_str().to_string();
-    
+
     rooms.insert(room_code.clone(), room);
     info!("Created new room: {}", room_code);
-    
+
     (StatusCode::CREATED, room_code)
 }
 
@@ -394,23 +441,23 @@ async fn list_rooms(State(state): State<AppState>) -> impl IntoResponse {
             })
         })
         .collect();
-    
+
     serde_json::to_string(&room_list).unwrap_or_else(|_| "[]".to_string())
 }
 
 async fn cleanup_rooms_task(rooms: &SharedRooms) {
     let mut rooms_guard = rooms.lock().unwrap();
     let mut rooms_to_remove = Vec::new();
-    
+
     for (room_code, room) in rooms_guard.iter_mut() {
         room.cleanup_inactive_players();
-        
+
         // Remove rooms that have been empty for more than 5 minutes
         if room.is_empty() && room.last_activity.elapsed() > Duration::from_secs(300) {
             rooms_to_remove.push(room_code.clone());
         }
     }
-    
+
     for room_code in rooms_to_remove {
         rooms_guard.remove(&room_code);
         info!("Cleaned up empty room: {}", room_code);

@@ -4,7 +4,8 @@ import './style.css'
 class CosmicCrunchersClient {
   private ws: WebSocket | null = null;
   private currentRoom: string | null = null;
-  private playerId: string | null = null;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  private _playerId: string | null = null;
   private playerName: string = '';
   private serverHost: string;
   private serverPort: string;
@@ -145,7 +146,7 @@ class CosmicCrunchersClient {
         this.updateConnectionStatus('Disconnected', false);
         this.ws = null;
         this.currentRoom = null;
-        this.playerId = null;
+        this._playerId = null;
         this.updateButtonStates();
         this.updateRoomStatus('Not in a room');
       };
@@ -271,9 +272,9 @@ class CosmicCrunchersClient {
     switch (message.type) {
       case 'RoomJoined':
         this.currentRoom = message.room_code;
-        this.playerId = message.player_id;
+        this._playerId = message.player_id;
         this.updateRoomStatus(`In room: ${message.room_code}`);
-        this.log(`Joined room ${message.room_code} as ${message.player_id}`, 'success');
+        this.log(`Joined room ${message.room_code} as ${this._playerId}`, 'success');
         this.updateButtonStates();
         break;
 
