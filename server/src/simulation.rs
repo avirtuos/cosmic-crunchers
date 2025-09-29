@@ -286,29 +286,30 @@ impl GameSimulation {
 
         // Update Ship component with physics-calculated values for consistency
         if let Ok(mut ship) = self.world.get::<&mut Ship>(entity)
-            && let Some(body) = self.physics.rigid_body_set.get(body_handle) {
-                // Update mass with physics-calculated value
-                ship.mass = body.mass();
+            && let Some(body) = self.physics.rigid_body_set.get(body_handle)
+        {
+            // Update mass with physics-calculated value
+            ship.mass = body.mass();
 
-                // Update size with collider radius (we know it's a ball collider with radius 8.0)
-                ship.size = 8.0;
+            // Update size with collider radius (we know it's a ball collider with radius 8.0)
+            ship.size = 8.0;
 
-                // Log the final ship configuration that will be sent to client
-                info!("🚀 Ship config for Player [{}]:", name);
-                info!("  Mass: {:.1}kg | Size: {:.1}px", ship.mass, ship.size);
-                info!("  Thrust Power: {:.0}N", ship.thrust_power);
-                info!("  Turn Rate: {:.1} rad/s", ship.turn_rate);
-                info!("  Max Speed: {:.1} px/s", ship.max_speed);
+            // Log the final ship configuration that will be sent to client
+            info!("🚀 Ship config for Player [{}]:", name);
+            info!("  Mass: {:.1}kg | Size: {:.1}px", ship.mass, ship.size);
+            info!("  Thrust Power: {:.0}N", ship.thrust_power);
+            info!("  Turn Rate: {:.1} rad/s", ship.turn_rate);
+            info!("  Max Speed: {:.1} px/s", ship.max_speed);
 
-                info!(
-                    "Created new ship for player[{}] with physics mass[{:.1}], linear_damp[{}], angular_damp[{}]. and spawn[{}]",
-                    player_id,
-                    body.mass(),
-                    body.linear_damping(),
-                    body.angular_damping(),
-                    body.position()
-                );
-            }
+            info!(
+                "Created new ship for player[{}] with physics mass[{:.1}], linear_damp[{}], angular_damp[{}]. and spawn[{}]",
+                player_id,
+                body.mass(),
+                body.linear_damping(),
+                body.angular_damping(),
+                body.position()
+            );
+        }
 
         info!("Spawned player ship for {}: entity={:?}", player_id, entity);
         entity
