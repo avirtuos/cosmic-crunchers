@@ -169,11 +169,18 @@ impl InputBuffer {
     }
 
     pub fn get_next_input(&mut self) -> Option<InputData> {
-        if let Some(front) = self.buffer.front()
-            && front.sequence == self.last_processed_sequence + 1
-        {
-            self.last_processed_sequence = front.sequence;
-            return self.buffer.pop_front();
+        if let Some(front) = self.buffer.front() {
+            // Process any input that hasn't been processed yet (sequence > last_processed)
+            // This handles sparse sequence numbers from the client
+            if front.sequence > self.last_processed_sequence {
+                self.last_processed_sequence = front.sequence;
+                return self.buffer.pop_front();
+            } else {
+                // Skip duplicate or old inputs
+                self.buffer.pop_front();
+                // Try again with the next input
+                return self.get_next_input();
+            }
         }
         None
     }
@@ -214,11 +221,11 @@ pub struct Ship {
 impl Default for Ship {
     fn default() -> Self {
         Self {
-            thrust_power: 500.0,
-            turn_rate: 3.0, // radians per second
-            max_speed: 200.0,
-            mass: 1.0,
-            size: 8.0,
+            thrust_power: 2000.0,
+            turn_rate: 5.0, // radians per second
+            max_speed: 100.0,
+            mass: 1.0, //TODO: sync this with rapier
+            size: 8.0, //TODO: sync this with rapier
         }
     }
 }
