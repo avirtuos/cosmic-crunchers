@@ -24,10 +24,9 @@ mod components;
 mod simulation;
 mod wire_format;
 
-// Note: Will integrate binary format and simulation in next steps
-// use components::InputData;
-// use simulation::{GameSimulation, SimulationStepResult};
-// use wire_format::{BinaryMessage, MessageType};
+use components::InputData;
+use rapier2d::prelude::Vector;
+use simulation::GameSimulation;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RoomCode(String);
@@ -66,6 +65,9 @@ pub enum ClientMessage {
     Ping {
         timestamp: u64,
     },
+    RequestDebugRender {
+        timestamp: u64,
+    },
     Leave,
 }
 
@@ -75,6 +77,7 @@ pub enum ServerMessage {
     RoomJoined {
         room_code: String,
         player_id: String,
+        entity_id: u64, // Add the hecs entity ID
     },
     RoomCreated {
         room_code: String,
@@ -94,6 +97,11 @@ pub enum ServerMessage {
     Pong {
         timestamp: u64,
     },
+    DebugRender {
+        sequence: u32,
+        timestamp: u64,
+        data: Vec<u8>,
+    },
     Error {
         message: String,
     },
@@ -107,12 +115,13 @@ pub struct Player {
     pub sender: broadcast::Sender<ServerMessage>,
 }
 
-#[derive(Debug)]
 pub struct Room {
     pub code: RoomCode,
     pub players: HashMap<Uuid, Player>,
     pub created_at: Instant,
     pub last_activity: Instant,
+    pub simulation: GameSimulation,
+    pub player_entities: HashMap<Uuid, hecs::Entity>, // Map player IDs to their ship entities
 }
 
 impl Default for Room {
@@ -129,6 +138,8 @@ impl Room {
             players: HashMap::new(),
             created_at: now,
             last_activity: now,
+            simulation: GameSimulation::new(),
+            player_entities: HashMap::new(),
         }
     }
 
@@ -136,6 +147,15 @@ impl Room {
         if self.players.len() >= 10 {
             return Err("Room is full".to_string());
         }
+
+        // Spawn ship entity in simulation
+        let spawn_position = self.get_spawn_position();
+        let ship_entity =
+            self.simulation
+                .spawn_player_ship(player.id, player.name.clone(), spawn_position);
+
+        // Map player to their ship entity
+        self.player_entities.insert(player.id, ship_entity);
 
         // Notify existing players
         let join_msg = ServerMessage::PlayerJoined {
@@ -152,8 +172,21 @@ impl Room {
         Ok(())
     }
 
+    fn get_spawn_position(&self) -> Vector<f32> {
+        // Simple spawn positioning - spread players around the center
+        let player_count = self.players.len() as f32;
+        let angle = player_count * 2.0 * std::f32::consts::PI / 8.0; // Up to 8 positions
+        let radius = 100.0;
+        Vector::new(angle.cos() * radius, angle.sin() * radius)
+    }
+
     pub fn remove_player(&mut self, player_id: Uuid) {
         if self.players.remove(&player_id).is_some() {
+            // Remove ship entity from simulation
+            if let Some(ship_entity) = self.player_entities.remove(&player_id) {
+                self.simulation.despawn_entity(ship_entity);
+            }
+
             let leave_msg = ServerMessage::PlayerLeft {
                 player_id: player_id.to_string(),
             };
@@ -308,13 +341,13 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
                                     timestamp,
                                     data,
                                 } => {
-                                    // For Phase 1, just echo back as snapshot for testing
-                                    let snapshot = ServerMessage::Snapshot {
-                                        sequence,
-                                        timestamp,
-                                        data,
-                                    };
-                                    let _ = tx.send(snapshot);
+                                    // Parse input data and add to simulation
+                                    if let Some(room_code) = &current_room {
+                                        handle_input(
+                                            &state, room_code, player_id, sequence, timestamp, data,
+                                        )
+                                        .await;
+                                    }
                                 }
                                 ClientMessage::Ping { timestamp } => {
                                     let pong = ServerMessage::Pong { timestamp };
@@ -323,6 +356,15 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
                                     // Update last seen time
                                     if let Some(room_code) = &current_room {
                                         update_player_activity(&state, room_code, player_id).await;
+                                    }
+                                }
+                                ClientMessage::RequestDebugRender { timestamp } => {
+                                    // Handle debug render request
+                                    if let Some(room_code) = &current_room {
+                                        handle_debug_request(
+                                            &state, room_code, player_id, timestamp,
+                                        )
+                                        .await;
                                     }
                                 }
                                 ClientMessage::Leave => {
@@ -378,9 +420,17 @@ async fn handle_join(
 
         match room.add_player(player) {
             Ok(()) => {
+                // Get the entity ID for this player
+                let entity_id = room
+                    .player_entities
+                    .get(&player_id)
+                    .map(|entity| entity.id() as u64)
+                    .unwrap_or(0);
+
                 let join_msg = ServerMessage::RoomJoined {
                     room_code: room_code.to_string(),
                     player_id: player_id.to_string(),
+                    entity_id,
                 };
                 let _ = rooms
                     .get(room_code)
@@ -441,7 +491,57 @@ async fn create_room(State(state): State<AppState>) -> impl IntoResponse {
     rooms.insert(room_code.clone(), room);
     info!("Created new room: {}", room_code);
 
+    // Start simulation loop for this room
+    let simulation_rooms = state.rooms.clone();
+    let simulation_room_code = room_code.clone();
+    tokio::spawn(async move {
+        run_room_simulation(simulation_rooms, simulation_room_code).await;
+    });
+
     (StatusCode::CREATED, room_code)
+}
+
+async fn run_room_simulation(rooms: SharedRooms, room_code: String) {
+    let mut interval = time::interval(Duration::from_millis(67)); // ~15 Hz
+
+    loop {
+        interval.tick().await;
+
+        let mut rooms_guard = rooms.lock().unwrap();
+        if let Some(room) = rooms_guard.get_mut(&room_code) {
+            // Skip if room is empty
+            if room.is_empty() {
+                continue;
+            }
+
+            // Step simulation
+            let step_result = room.simulation.step(1.0 / 15.0); // 15 Hz timestep
+
+            // Send snapshot if generated
+            if let Some(snapshot) = step_result.snapshot {
+                let snapshot_data = if let Ok(json) = serde_json::to_vec(&snapshot) {
+                    json
+                } else {
+                    continue;
+                };
+
+                let snapshot_msg = ServerMessage::Snapshot {
+                    sequence: snapshot.sequence,
+                    timestamp: snapshot.timestamp,
+                    data: snapshot_data,
+                };
+
+                // Broadcast to all players in the room
+                for player in room.players.values() {
+                    let _ = player.sender.send(snapshot_msg.clone());
+                }
+            }
+        } else {
+            // Room doesn't exist anymore, stop the loop
+            info!("Stopping simulation for room {}: room removed", room_code);
+            break;
+        }
+    }
 }
 
 async fn list_rooms(State(state): State<AppState>) -> impl IntoResponse {
@@ -458,6 +558,116 @@ async fn list_rooms(State(state): State<AppState>) -> impl IntoResponse {
         .collect();
 
     serde_json::to_string(&room_list).unwrap_or_else(|_| "[]".to_string())
+}
+
+async fn handle_input(
+    state: &AppState,
+    room_code: &str,
+    player_id: Uuid,
+    sequence: u32,
+    timestamp: u64,
+    data: Vec<u8>,
+) {
+    info!(
+        "🎮 Received input message: player={}, sequence={}, timestamp={}, data_len={}",
+        player_id,
+        sequence,
+        timestamp,
+        data.len()
+    );
+
+    let mut rooms = state.rooms.lock().unwrap();
+    if let Some(room) = rooms.get_mut(room_code) {
+        // Parse input data from client
+        match serde_json::from_slice::<InputData>(&data) {
+            Ok(input_data) => {
+                info!(
+                    "✅ Successfully parsed input: thrust={}, turn={}, primary_fire={}, secondary_fire={}",
+                    input_data.thrust,
+                    input_data.turn,
+                    input_data.primary_fire,
+                    input_data.secondary_fire
+                );
+
+                // Add input to simulation
+                room.simulation.add_player_input(player_id, input_data);
+                info!("📨 Input added to simulation for player {}", player_id);
+            }
+            Err(e) => {
+                warn!(
+                    "❌ Failed to parse input data for player {}: {}",
+                    player_id, e
+                );
+                warn!("Raw data: {:?}", String::from_utf8_lossy(&data));
+            }
+        }
+    } else {
+        warn!(
+            "❌ Room {} not found for input from player {}",
+            room_code, player_id
+        );
+    }
+}
+
+async fn handle_debug_request(state: &AppState, room_code: &str, player_id: Uuid, timestamp: u64) {
+    info!(
+        "🔍 Received debug render request from player {} in room {}",
+        player_id, room_code
+    );
+
+    let mut rooms = state.rooms.lock().unwrap();
+    if let Some(room) = rooms.get_mut(room_code) {
+        // Generate debug render data from the simulation
+        let debug_data = room.simulation.generate_debug_render_data();
+
+        // Serialize debug data to JSON bytes
+        match serde_json::to_vec(&debug_data) {
+            Ok(debug_bytes) => {
+                let debug_msg = ServerMessage::DebugRender {
+                    sequence: debug_data.sequence,
+                    timestamp,
+                    data: debug_bytes,
+                };
+
+                // Send debug data to the requesting player
+                if let Some(player) = room.players.get(&player_id) {
+                    match player.sender.send(debug_msg) {
+                        Ok(_) => {
+                            info!(
+                                "✅ Sent debug render data to player {} (sequence: {}, bodies: {}, colliders: {})",
+                                player_id,
+                                debug_data.sequence,
+                                debug_data.rigid_bodies.len(),
+                                debug_data.colliders.len()
+                            );
+                        }
+                        Err(e) => {
+                            warn!(
+                                "❌ Failed to send debug render data to player {}: {}",
+                                player_id, e
+                            );
+                        }
+                    }
+                } else {
+                    warn!(
+                        "❌ Player {} not found in room {} for debug request",
+                        player_id, room_code
+                    );
+                }
+            }
+            Err(e) => {
+                warn!(
+                    "❌ Failed to serialize debug render data for player {}: {}",
+                    player_id, e
+                );
+            }
+        }
+    } else {
+        warn!(
+            "❌ Room {} not found for debug request from player {}",
+            room_code, player_id
+        );
+    }
 }
 
 async fn cleanup_rooms_task(rooms: &SharedRooms) {

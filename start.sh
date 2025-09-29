@@ -4,11 +4,13 @@
 # This script starts both the server and client in development mode
 #
 # Configuration via environment variables:
-#   SERVER_HOST=0.0.0.0 SERVER_PORT=3000 CLIENT_HOST=0.0.0.0 CLIENT_PORT=8080 ./start.sh
+#   SERVER_HOST=0.0.0.0 SERVER_PORT=3000 CLIENT_HOST=0.0.0.0 CLIENT_PORT=8080 RUST_LOG=debug ./start.sh
 #
 # Or set them inline:
 #   SERVER_HOST="0.0.0.0" ./start.sh  (to bind server to all interfaces)
 #   CLIENT_HOST="0.0.0.0" ./start.sh  (to make Vite accessible from other machines)
+#   RUST_LOG=debug ./start.sh         (to enable debug logging for server)
+#   RUST_LOG=trace ./start.sh         (to enable trace logging for server)
 
 set -e
 
@@ -58,7 +60,10 @@ fi
 echo ""
 echo "🖥️  Starting server on http://${SERVER_HOST}:${SERVER_PORT}"
 echo "🔗 WebSocket endpoint: ws://${SERVER_HOST}:${SERVER_PORT}/ws"
-COSMIC_SERVER_HOST=${SERVER_HOST} COSMIC_SERVER_PORT=${SERVER_PORT} CLIENT_HOST=${CLIENT_HOST} CLIENT_PORT=${CLIENT_PORT} cargo run &
+if [ -n "$RUST_LOG" ]; then
+    echo "🔍 Logging level: $RUST_LOG"
+fi
+RUST_LOG=${RUST_LOG} COSMIC_SERVER_HOST=${SERVER_HOST} COSMIC_SERVER_PORT=${SERVER_PORT} CLIENT_HOST=${CLIENT_HOST} CLIENT_PORT=${CLIENT_PORT} cargo run &
 SERVER_PID=$!
 cd ..
 

@@ -2,6 +2,8 @@
 
 A multiplayer, browser-based 2D space shooter where friends cooperate to destroy waves of enemies and asteroids while collecting resources and upgrades. Built with Rust (server) and TypeScript + Phaser 3 (client).
 
+I've never written a game before so I am using this project as a way to see if Claude can educate me in this new domain while building an actual project. A lot of the code you will see here is written by Claude so it will very much have an evolving prototype feel while I (a) learn these game engine concepts and frameworks, (b) steer Claude through building my vision for the game (c) go back and clean up the (likely) spaghetti that will result from the combination of my inexperience with games and the tendency of "Vibe Coding" to layer fix on-top of fix. In an attempt to "do this right" you'll find a design spec and implementation task breakdown in the docs folder. The goal is to balance the spec driven approach with the more fluid vibe mode for ironing out bugs and refining the game play.
+
 ## Quick Start
 
 ### Prerequisites

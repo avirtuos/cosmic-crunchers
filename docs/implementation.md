@@ -82,19 +82,19 @@ Phase 2 — Server simulation loop, ECS, Rapier2D ✅ COMPLETED
   - Server runs a stable sim loop without crashing; tick times are within acceptable bounds on dev machine.
   - Deterministic replay works for short recorded sessions.
 
-Phase 3 — Client prototype: rendering & input prediction
-- [ ] Bootstrap Phaser 3 scene for arena
+Phase 3 — Client prototype: rendering & input prediction  ✅ COMPLETED
+- [x] Bootstrap Phaser 3 scene for arena
   - Render ships, projectiles, basic sprites/placeholders
-- [ ] Input capture and local prediction
+- [x] Input capture and local prediction
   - Sample input at 30 TPS, send to server, buffer locally with seq ids
   - Predict local ship motion using simplified kinematics
-- [ ] Interpolation of remote entities
+- [x] Interpolation of remote entities
   - Implement fixed-lag interpolation (120 ms buffer)
-- [ ] Snapshot handling & reconciliation
+- [x] Snapshot handling & reconciliation
   - Apply server authoritative positions; smoothly correct local drift
-- [ ] Debug overlay
+- [x] Debug overlay
   - Show netgraph (RTT, snapshot age), reconciliation corrections, entity count
-- Acceptance:
+- Acceptance:  ✅ COMPLETED
   - Two clients connected to same room see their ships and can move; local client experiences immediate responsiveness via prediction while authoritative snapshots resolve corrections.
 
 Phase 4 — Weapons, projectiles, enemies & bosses
